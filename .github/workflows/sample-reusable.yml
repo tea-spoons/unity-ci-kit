@@ -1,0 +1,35 @@
+name: Sample project (reusable workflows)
+
+# Calls the published reusable workflows at @v0, exactly as another repository would.
+# It therefore tests the released kit, not the files in this commit; use `sample.yml` to test the current tree.
+# Needs Unity Personal credentials: UNITY_EMAIL and UNITY_PASSWORD as repository or organization secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      unity-version:
+        description: Editor version
+        default: 6000.0.84f1
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: tea-spoons/unity-ci-kit/.github/workflows/test.yml@v0
+    with:
+      unity-version: ${{ inputs.unity-version }}
+      project-path: examples/sample-project
+      test-mode: all
+    secrets: inherit
+
+  # Runs after the tests so the two jobs never hold the account's single Personal seat at the same time.
+  build:
+    needs: test
+    uses: tea-spoons/unity-ci-kit/.github/workflows/build.yml@v0
+    with:
+      unity-version: ${{ inputs.unity-version }}
+      project-path: examples/sample-project
+      build-targets: '["StandaloneLinux64"]'
+      version: 0.0.${{ github.run_number }}
+    secrets: inherit
