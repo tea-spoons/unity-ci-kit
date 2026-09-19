@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.2.0]
+
+- No code changes. Version aligned with the kit release that adds `license-mode: personal` to the actions.
+
 ## [0.1.1]
 
 - Package `author` now lists Muhammad Tarek Abdou.
