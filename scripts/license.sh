@@ -8,6 +8,8 @@
 #   UNITY_LICENSE    .ulf contents            (activate, ulf)
 #   UNITY_SERIAL     serial key               (activate, serial)
 #   UNITY_EMAIL, UNITY_PASSWORD               (personal, serial)
+#   LICENSING_CLIENT Path of Unity.Licensing.Client; use it for Personal on current editors
+#                    (<editor>/Data/Resources/Licensing/Client/Unity.Licensing.Client)
 set -euo pipefail
 
 action="${1:?usage: license.sh <activate|return>}"
@@ -49,8 +51,19 @@ case "${action}:${mode}" in
     ;;
   activate:personal)
     require UNITY_EMAIL UNITY_PASSWORD
-    "$unity" -quit -batchmode -nographics -logFile - \
-      -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"
+    if [[ -n "${LICENSING_CLIENT:-}" ]]; then
+      # Current editors: the licensing client requests the Personal seat itself.
+      output="$("$LICENSING_CLIENT" --activate-all --include-personal \
+        --username "$UNITY_EMAIL" --password "$UNITY_PASSWORD" 2>&1)"
+      printf '%s\n' "$output"
+      if grep -q -i -E 'No seat available|assigned no seat' <<< "$output"; then
+        echo "::error::Unity did not grant a Personal seat." >&2
+        exit 66
+      fi
+    else
+      "$unity" -quit -batchmode -nographics -logFile - \
+        -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"
+    fi
     ;;
   activate:serial)
     require UNITY_SERIAL UNITY_EMAIL UNITY_PASSWORD
@@ -61,7 +74,16 @@ case "${action}:${mode}" in
     maybe_sudo rm -f "$(ulf_dir)/Unity_lic.ulf"
     echo "License file removed."
     ;;
-  return:personal|return:serial)
+  return:personal)
+    if [[ -n "${LICENSING_CLIENT:-}" ]]; then
+      "$LICENSING_CLIENT" --return-ulf
+    else
+      require UNITY_EMAIL UNITY_PASSWORD
+      "$unity" -quit -batchmode -nographics -logFile - \
+        -returnlicense -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"
+    fi
+    ;;
+  return:serial)
     require UNITY_EMAIL UNITY_PASSWORD
     "$unity" -quit -batchmode -nographics -logFile - \
       -returnlicense -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"

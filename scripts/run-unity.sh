@@ -17,6 +17,8 @@
 #   UNITY_LICENSE      Contents of the .ulf file          (LICENSE_MODE=ulf, older editors)
 #   UNITY_SERIAL, UNITY_EMAIL, UNITY_PASSWORD               (LICENSE_MODE=serial)
 #   UNITY_BIN          Editor command inside the image        (default: unity-editor)
+#   LICENSING_CLIENT   Unity.Licensing.Client path inside the image (default: under /opt/unity)
+#   LICENSE_ACTIVATION_ATTEMPTS / LICENSE_ACTIVATION_RETRY_DELAY   Personal seat retries (default: 3 / 15s)
 #   CONTINUE_ON_ERROR  1 = run every row and report the worst exit code
 #   WORKSPACE          Directory mounted into the container  (default: $GITHUB_WORKSPACE or $PWD)
 set -euo pipefail
@@ -53,6 +55,9 @@ docker run --rm \
   --env LICENSE_MODE="${LICENSE_MODE:-none}" \
   --env CONTINUE_ON_ERROR="${CONTINUE_ON_ERROR:-0}" \
   --env UNITY_BIN \
+  --env LICENSING_CLIENT \
+  --env LICENSE_ACTIVATION_ATTEMPTS \
+  --env LICENSE_ACTIVATION_RETRY_DELAY \
   --env UNITY_COMMANDS \
   --env UNITY_LICENSE \
   --env UNITY_SERIAL \

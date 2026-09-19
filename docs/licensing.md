@@ -17,7 +17,9 @@ GitHub does not pass secrets to workflows triggered from forks, so pull requests
 ## Personal (`license-mode: personal`)
 
 Current editors treat a Personal license as an entitlement on your Unity account, so activation is a login with
-the account email and password, and the seat is returned afterwards.
+the account email and password, and the seat is returned afterwards. In containers the kit calls the editor's
+`Unity.Licensing.Client --activate-all --include-personal` (older editors fall back to logging in through the
+editor) and returns the seat with `--return-ulf` when the run ends.
 
 ```powershell
 gh secret set UNITY_EMAIL    --repo <owner>/<repo>
@@ -35,8 +37,11 @@ Things to know:
 
 - **Two-factor authentication or SSO on the account can block a headless login.** If activation fails, try a
   dedicated Unity account without them.
-- **Activation can exit successfully without granting a seat.** The first Unity run then fails with exit code
-  `198` and `No valid Unity Editor license found`. The kit prints a hint when that happens.
+- **Unity's servers decide whether a Personal seat is granted, and it can vary between runs.** The kit judges
+  success by whether a seat was actually assigned (not by the exit code), retries up to 3 times, and fails
+  before starting Unity with `did not grant a Personal seat`. A re-run often clears it. A Plus/Pro serial
+  (`license-mode: serial`) avoids the problem.
+- If Unity still reports exit code `198` (`No valid Unity Editor license found`), the kit prints a hint.
 - Use a password you are comfortable storing as a secret, and prefer a dedicated account for CI. Check Unity's terms
   for where a Personal license may be used.
 
@@ -74,11 +79,15 @@ and exited with code 198. Use `personal` for current editors.
 
 Self-hosted runners that already have the editor can skip containers and use the host actions:
 
+For `personal` on current editors also pass `licensing-client` (the editor's
+`Data/Resources/Licensing/Client/Unity.Licensing.Client`), so the client can request the seat.
+
 ```yaml
 - uses: tea-spoons/unity-ci-kit/actions/activate-license@v0
   with:
     license-mode: personal
     unity-path: /opt/unity/Editor/Unity
+    licensing-client: /opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client
     unity-email: ${{ secrets.UNITY_EMAIL }}
     unity-password: ${{ secrets.UNITY_PASSWORD }}
 
@@ -89,6 +98,7 @@ Self-hosted runners that already have the editor can skip containers and use the
   with:
     license-mode: personal
     unity-path: /opt/unity/Editor/Unity
+    licensing-client: /opt/unity/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client
     unity-email: ${{ secrets.UNITY_EMAIL }}
     unity-password: ${{ secrets.UNITY_PASSWORD }}
 ```

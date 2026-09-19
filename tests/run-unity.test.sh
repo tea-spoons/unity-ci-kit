@@ -16,10 +16,27 @@ printf 'ARGS:'; printf ' [%s]' "$@"; echo
 if [[ -f "$HOME/.local/share/unity3d/Unity/Unity_lic.ulf" ]]; then
   echo "LICENSE: $(cat "$HOME/.local/share/unity3d/Unity/Unity_lic.ulf")"
 fi
+# Account login without a serial is Personal activation; the editor reports a grant like this.
+if [[ " $* " == *" -username "* && " $* " != *" -serial "* && " $* " != *" -returnlicense "* \
+      && ! -f /github/workspace/no-grant ]]; then
+  echo "Serial number assigned to: fake-seat"
+fi
 [[ " $* " == *" -fail "* ]] && exit 3
 exit 0
 EOF
 chmod +x "$work/fake-unity.sh"
+
+# Stand-in for Unity.Licensing.Client: answers --help like a modern client and records every call.
+cat > "$work/fake-client.sh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "--help" ]]; then echo "  --include-personal   Fallback to Personal Edition"; exit 0; fi
+printf 'CLIENT:'; printf ' [%s]' "$@"; echo
+if [[ "$1" == "--activate-all" ]]; then
+  if [[ -f /github/workspace/no-seat ]]; then echo "No seat available."; else echo "Seat ID: fake-seat"; fi
+fi
+exit 0
+EOF
+chmod +x "$work/fake-client.sh"
 
 failures=0
 indent() { sed 's/^/    /'; }
@@ -64,14 +81,45 @@ check "ulf mode without a license fails" 65 "UNITY_LICENSE is empty" "$rc" "$out
 run LICENSE_MODE=personal UNITY_EMAIL=me@example.com UNITY_COMMANDS='-x'
 check "personal mode without a password fails" 65 "UNITY_PASSWORD is empty" "$rc" "$out"
 
+# Personal, older editors: activation goes through the editor (no licensing client in the image).
 run LICENSE_MODE=personal UNITY_EMAIL=me@example.com UNITY_PASSWORD=pw UNITY_COMMANDS='-x'
-check "personal mode logs in with the account, no serial" 0 "[-username] [me@example.com] [-password] [pw]" "$rc" "$out"
+check "personal (editor route) logs in with the account" 0 "[-username] [me@example.com] [-password] [pw]" "$rc" "$out"
 if [[ "$out" != *"[-serial]"* ]]; then
   echo "ok:   personal activation passes no -serial"
 else
   echo "FAIL: personal activation passed -serial"; failures=$((failures + 1))
 fi
-check "personal mode returns the seat afterwards" 0 "[-returnlicense]" "$rc" "$out"
+check "personal (editor route) returns the seat afterwards" 0 "[-returnlicense]" "$rc" "$out"
+
+touch "$work/no-grant"
+run LICENSE_MODE=personal UNITY_EMAIL=me@example.com UNITY_PASSWORD=pw UNITY_COMMANDS='-x' \
+  LICENSE_ACTIVATION_ATTEMPTS=2 LICENSE_ACTIVATION_RETRY_DELAY=0
+check "personal (editor route) fails when Unity grants no seat" 66 "did not grant a Personal seat" "$rc" "$out"
+check "and retries before giving up" 66 "retrying in 0s" "$rc" "$out"
+if [[ "$out" != *"[-projectPath]"* ]]; then
+  echo "ok:   no Unity run starts without a seat"
+else
+  echo "FAIL: Unity ran without a license"; failures=$((failures + 1))
+fi
+rm -f "$work/no-grant"
+
+# Personal, current editors: the licensing client requests the seat and gives it back.
+run LICENSE_MODE=personal UNITY_EMAIL=me@example.com UNITY_PASSWORD=pw UNITY_COMMANDS='-x' \
+  LICENSING_CLIENT=/github/workspace/fake-client.sh
+check "personal (client route) activates through the licensing client" 0 \
+  "CLIENT: [--activate-all] [--include-personal] [--username] [me@example.com] [--password] [pw]" "$rc" "$out"
+check "personal (client route) returns the seat with --return-ulf" 0 "CLIENT: [--return-ulf]" "$rc" "$out"
+if [[ "$out" != *"[-username]"* ]]; then
+  echo "ok:   client route does not log in through the editor"
+else
+  echo "FAIL: client route also used the editor login"; failures=$((failures + 1))
+fi
+
+touch "$work/no-seat"
+run LICENSE_MODE=personal UNITY_EMAIL=me@example.com UNITY_PASSWORD=pw UNITY_COMMANDS='-x' \
+  LICENSING_CLIENT=/github/workspace/fake-client.sh LICENSE_ACTIVATION_ATTEMPTS=1
+check "personal (client route) fails when the client reports no seat" 66 "did not grant a Personal seat" "$rc" "$out"
+rm -f "$work/no-seat"
 
 run LICENSE_MODE=serial UNITY_SERIAL=s UNITY_EMAIL=e UNITY_COMMANDS='-x'
 check "serial mode without a password fails" 65 "UNITY_PASSWORD is empty" "$rc" "$out"

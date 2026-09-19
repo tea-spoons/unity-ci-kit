@@ -18,6 +18,11 @@ inputs:
   unity-serial:
     description: Unity serial key (license-mode=serial).
     required: false
+  licensing-client:
+    description: >-
+      Path of Unity.Licensing.Client (inside the editor at Data/Resources/Licensing/Client/). Set it for
+      license-mode=personal on current editors so the client requests the Personal seat.
+    required: false
   unity-email:
     description: Unity account email (license-mode=personal or serial).
     required: false
@@ -35,6 +40,7 @@ runs:
         UNITY_PATH: ${{ inputs.unity-path }}
         UNITY_LICENSE: ${{ inputs.unity-license }}
         UNITY_SERIAL: ${{ inputs.unity-serial }}
+        LICENSING_CLIENT: ${{ inputs.licensing-client }}
         UNITY_EMAIL: ${{ inputs.unity-email }}
         UNITY_PASSWORD: ${{ inputs.unity-password }}
       run: bash "${{ github.action_path }}/../../scripts/license.sh" activate
