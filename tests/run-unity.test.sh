@@ -31,6 +31,9 @@ cat > "$work/fake-client.sh" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$1" == "--help" ]]; then echo "  --include-personal   Fallback to Personal Edition"; exit 0; fi
 printf 'CLIENT:'; printf ' [%s]' "$@"; echo
+if [[ "$1" == "--return-ulf" && -f /github/workspace/no-ulf ]]; then
+  echo "Ulf license file not found (1404)"; exit 1
+fi
 if [[ "$1" == "--activate-all" ]]; then
   if [[ -f /github/workspace/no-seat ]]; then echo "No seat available."; else echo "Seat ID: fake-seat"; fi
 fi
@@ -114,6 +117,14 @@ if [[ "$out" != *"[-username]"* ]]; then
 else
   echo "FAIL: client route also used the editor login"; failures=$((failures + 1))
 fi
+
+# Entitlement-based seats have no ULF file: --return-ulf fails, so the seat is returned through the editor.
+touch "$work/no-ulf"
+run LICENSE_MODE=personal UNITY_EMAIL=me@example.com UNITY_PASSWORD=pw UNITY_COMMANDS='-x' \
+  LICENSING_CLIENT=/github/workspace/fake-client.sh
+check "client route falls back to the editor when --return-ulf finds no ULF" 0 "Returning the seat through the editor" "$rc" "$out"
+check "and returns the seat with -returnlicense" 0 "[-returnlicense] [-username] [me@example.com]" "$rc" "$out"
+rm -f "$work/no-ulf"
 
 touch "$work/no-seat"
 run LICENSE_MODE=personal UNITY_EMAIL=me@example.com UNITY_PASSWORD=pw UNITY_COMMANDS='-x' \

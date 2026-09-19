@@ -75,9 +75,9 @@ case "${action}:${mode}" in
     echo "License file removed."
     ;;
   return:personal)
-    if [[ -n "${LICENSING_CLIENT:-}" ]]; then
-      "$LICENSING_CLIENT" --return-ulf
-    else
+    # Personal seats on current editors are entitlements, so --return-ulf can find nothing to return;
+    # in that case (or without a client) return the seat through the editor.
+    if [[ -z "${LICENSING_CLIENT:-}" ]] || ! "$LICENSING_CLIENT" --return-ulf; then
       require UNITY_EMAIL UNITY_PASSWORD
       "$unity" -quit -batchmode -nographics -logFile - \
         -returnlicense -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"

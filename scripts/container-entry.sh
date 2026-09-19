@@ -22,7 +22,13 @@ cleanup() {
   case "$return_route" in
     client)
       echo "::group::Returning Unity license"
-      "$licensing_client" --return-ulf || echo "::warning::Could not return the Unity license."
+      if ! "$licensing_client" --return-ulf; then
+        # Personal seats on current editors are account entitlements, not a ULF file, so there is
+        # nothing for --return-ulf to return. Give the seat back through the editor instead.
+        echo "Returning the seat through the editor instead."
+        "$unity_bin" -quit -nographics -logFile /dev/stdout -returnlicense \
+          -username "${UNITY_EMAIL:-}" -password "${UNITY_PASSWORD:-}" || echo "::warning::Could not return the Unity license."
+      fi
       echo "::endgroup::"
       ;;
     editor)
