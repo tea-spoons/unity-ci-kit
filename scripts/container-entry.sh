@@ -10,7 +10,7 @@ project_path="${PROJECT_PATH:-.}"
 license_mode="${LICENSE_MODE:-none}"
 serial_active=0
 
-# shellcheck disable=SC2329  # invoked through the EXIT trap below
+# shellcheck disable=SC2317,SC2329  # invoked through the EXIT trap below
 cleanup() {
   local code=$?
   if [[ "$serial_active" == "1" ]]; then

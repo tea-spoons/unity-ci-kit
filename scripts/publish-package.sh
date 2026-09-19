@@ -25,8 +25,13 @@ tag="${tag//\{name\}/$name}"
 tag="${tag//\{version\}/$version}"
 
 if git ls-remote --exit-code --tags origin "refs/tags/${tag}" > /dev/null 2>&1; then
-  echo "::error::Tag ${tag} already exists. Bump the version in ${pkg}/package.json first." >&2
-  exit 1
+  if [[ "${DRY_RUN:-0}" == "1" ]]; then
+    # A dry run only reports; CI runs it on every push, including after a release.
+    echo "::warning::Tag ${tag} already exists, so a real publish would fail. Bump the version in ${pkg}/package.json first."
+  else
+    echo "::error::Tag ${tag} already exists. Bump the version in ${pkg}/package.json first." >&2
+    exit 1
+  fi
 fi
 
 repo_url="https://github.com/${GITHUB_REPOSITORY:-owner/repo}"

@@ -21,7 +21,7 @@ expect() { # expect <description> <wanted-rc> <wanted-substring> <package-dir>
   fi
 }
 
-broken() { rm -rf "$work/pkg"; cp -r "$good" "$work/pkg"; }
+broken() { rm -rf "$work/pkg"; cp -R "$good" "$work/pkg"; }
 
 expect "the kit's own package is valid" 0 "is valid" "$good"
 
