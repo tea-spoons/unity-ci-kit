@@ -1,0 +1,56 @@
+name: Sample project
+
+# Runs the kit's own actions against examples/sample-project with real Unity.
+# It needs a Unity license, so it is manual: add UNITY_LICENSE (Personal .ulf contents)
+# or UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD as repository secrets, then run it from the Actions tab.
+
+on:
+  workflow_dispatch:
+    inputs:
+      unity-version:
+        description: Editor version
+        default: 6000.0.84f1
+      license-mode:
+        description: ulf or serial
+        default: ulf
+
+permissions:
+  contents: read
+
+env:
+  PROJECT: examples/sample-project
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./actions/run-tests
+        with:
+          unity-version: ${{ inputs.unity-version }}
+          project-path: ${{ env.PROJECT }}
+          test-mode: all
+          license-mode: ${{ inputs.license-mode }}
+          unity-license: ${{ secrets.UNITY_LICENSE }}
+          unity-serial: ${{ secrets.UNITY_SERIAL }}
+          unity-email: ${{ secrets.UNITY_EMAIL }}
+          unity-password: ${{ secrets.UNITY_PASSWORD }}
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./actions/build-player
+        with:
+          unity-version: ${{ inputs.unity-version }}
+          build-target: StandaloneLinux64
+          project-path: ${{ env.PROJECT }}
+          version: 0.0.${{ github.run_number }}
+          license-mode: ${{ inputs.license-mode }}
+          unity-license: ${{ secrets.UNITY_LICENSE }}
+          unity-serial: ${{ secrets.UNITY_SERIAL }}
+          unity-email: ${{ secrets.UNITY_EMAIL }}
+          unity-password: ${{ secrets.UNITY_PASSWORD }}

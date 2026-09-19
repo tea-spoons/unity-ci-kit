@@ -1,0 +1,29 @@
+name: Return Unity license
+description: Return a serial license (or remove the .ulf file) activated by `activate-license`. Run it with `if: always()`.
+
+inputs:
+  license-mode:
+    description: "`ulf` (remove the license file) or `serial` (return the serial license)."
+    required: true
+  unity-path:
+    description: Path or command of the Unity editor executable on the runner.
+    required: false
+    default: unity-editor
+  unity-email:
+    description: Unity account email (license-mode=serial).
+    required: false
+  unity-password:
+    description: Unity account password (license-mode=serial).
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Return license
+      shell: bash
+      env:
+        LICENSE_MODE: ${{ inputs.license-mode }}
+        UNITY_PATH: ${{ inputs.unity-path }}
+        UNITY_EMAIL: ${{ inputs.unity-email }}
+        UNITY_PASSWORD: ${{ inputs.unity-password }}
+      run: bash "${{ github.action_path }}/../../scripts/license.sh" return

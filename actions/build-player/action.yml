@@ -1,0 +1,169 @@
+name: Build Unity player
+description: Build a Unity player in a container using the TeaSpoons.CiKit BuildRunner (or your own build method) and upload it.
+
+inputs:
+  unity-version:
+    description: Editor version, e.g. 6000.0.84f1.
+    required: true
+  build-target:
+    description: >-
+      Unity BuildTarget name, e.g. StandaloneLinux64, StandaloneWindows64, StandaloneOSX, Android, iOS, WebGL.
+      iOS produces an Xcode project only; compiling it needs a macOS runner with Xcode.
+    required: true
+  project-path:
+    description: Unity project directory, relative to the workspace.
+    required: false
+    default: "."
+  output-path:
+    description: Output directory, relative to the workspace root.
+    required: false
+    default: build
+  build-name:
+    description: File name of the built player, without extension. Defaults to the Unity product name.
+    required: false
+  version:
+    description: Value for PlayerSettings.bundleVersion. Leave empty to keep the project's version.
+    required: false
+  build-number:
+    description: Android versionCode / iOS and macOS build number. Leave empty to keep the project's value.
+    required: false
+  defines:
+    description: Semicolon-separated scripting define symbols appended for the build target.
+    required: false
+  scenes:
+    description: Semicolon-separated scene paths. Defaults to the enabled scenes in Build Settings.
+    required: false
+  development:
+    description: Create a development build.
+    required: false
+    default: "false"
+  android-app-bundle:
+    description: Build an .aab instead of an .apk (Android only).
+    required: false
+    default: "false"
+  execute-method:
+    description: Static Unity method to run. Change this to use your own build script instead of the kit's BuildRunner.
+    required: false
+    default: TeaSpoons.CiKit.BuildRunner.Build
+  extra-args:
+    description: Extra Unity arguments (single line).
+    required: false
+  component:
+    description: Image component. Defaults to the one matching build-target.
+    required: false
+  image-version:
+    description: unityci/editor image revision suffix.
+    required: false
+    default: "3"
+  license-mode:
+    description: "`ulf`, `serial` or `none`."
+    required: false
+    default: none
+  unity-license:
+    description: Contents of the Unity_lic.ulf file (license-mode=ulf).
+    required: false
+  unity-serial:
+    description: Unity serial key (license-mode=serial).
+    required: false
+  unity-email:
+    description: Unity account email (license-mode=serial).
+    required: false
+  unity-password:
+    description: Unity account password (license-mode=serial).
+    required: false
+  upload-artifacts:
+    description: Upload the build directory as a workflow artifact.
+    required: false
+    default: "true"
+  artifact-name:
+    description: Name of the uploaded artifact. Defaults to `build-<build-target>`.
+    required: false
+
+outputs:
+  build-dir:
+    description: Absolute path of the build output directory on the runner.
+    value: ${{ steps.prepare.outputs.build-dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare build
+      id: prepare
+      shell: bash
+      env:
+        BUILD_TARGET: ${{ inputs.build-target }}
+        OUTPUT_PATH: ${{ inputs.output-path }}
+        BUILD_NAME: ${{ inputs.build-name }}
+        VERSION: ${{ inputs.version }}
+        BUILD_NUMBER: ${{ inputs.build-number }}
+        DEFINES: ${{ inputs.defines }}
+        SCENES: ${{ inputs.scenes }}
+        DEVELOPMENT: ${{ inputs.development }}
+        ANDROID_APP_BUNDLE: ${{ inputs.android-app-bundle }}
+        EXECUTE_METHOD: ${{ inputs.execute-method }}
+        EXTRA_ARGS: ${{ inputs.extra-args }}
+        COMPONENT: ${{ inputs.component }}
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+      run: |
+        set -euo pipefail
+
+        component="$COMPONENT"
+        if [[ -z "$component" ]]; then
+          case "$BUILD_TARGET" in
+            Android)              component=android ;;
+            iOS)                  component=ios ;;
+            WebGL)                component=webgl ;;
+            StandaloneWindows64)  component=windows-mono ;;
+            StandaloneOSX)        component=mac-mono ;;
+            *)                    component=base ;;
+          esac
+        fi
+        echo "component=${component}" >> "$GITHUB_OUTPUT"
+        echo "artifact-name=${ARTIFACT_NAME:-build-${BUILD_TARGET}}" >> "$GITHUB_OUTPUT"
+
+        build_dir="${GITHUB_WORKSPACE}/${OUTPUT_PATH}/${BUILD_TARGET}"
+        mkdir -p "$build_dir"
+        echo "build-dir=${build_dir}" >> "$GITHUB_OUTPUT"
+
+        # %q quotes each value so xargs inside the container keeps it as one argument.
+        q() { printf '%q' "$1"; }
+
+        row="-quit -buildTarget $(q "$BUILD_TARGET") -executeMethod $(q "$EXECUTE_METHOD")"
+        row+=" -ciBuildTarget $(q "$BUILD_TARGET") -ciOutputPath $(q "/github/workspace/${OUTPUT_PATH}/${BUILD_TARGET}")"
+        if [[ -n "$BUILD_NAME" ]];   then row+=" -ciBuildName $(q "$BUILD_NAME")"; fi
+        if [[ -n "$VERSION" ]];      then row+=" -ciVersion $(q "$VERSION")"; fi
+        if [[ -n "$BUILD_NUMBER" ]]; then row+=" -ciBuildNumber $(q "$BUILD_NUMBER")"; fi
+        if [[ -n "$DEFINES" ]];      then row+=" -ciDefines $(q "$DEFINES")"; fi
+        if [[ -n "$SCENES" ]];       then row+=" -ciScenes $(q "$SCENES")"; fi
+        if [[ "$DEVELOPMENT" == "true" ]];        then row+=" -ciDevelopment true"; fi
+        if [[ "$ANDROID_APP_BUNDLE" == "true" ]]; then row+=" -ciAndroidAppBundle true"; fi
+        if [[ -n "$EXTRA_ARGS" ]];   then row+=" ${EXTRA_ARGS}"; fi
+
+        {
+          echo "commands<<KIT_EOF"
+          echo "$row"
+          echo "KIT_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Build player
+      shell: bash
+      env:
+        UNITY_VERSION: ${{ inputs.unity-version }}
+        UNITY_COMPONENT: ${{ steps.prepare.outputs.component }}
+        UNITY_IMAGE_VERSION: ${{ inputs.image-version }}
+        PROJECT_PATH: ${{ inputs.project-path }}
+        UNITY_COMMANDS: ${{ steps.prepare.outputs.commands }}
+        LICENSE_MODE: ${{ inputs.license-mode }}
+        UNITY_LICENSE: ${{ inputs.unity-license }}
+        UNITY_SERIAL: ${{ inputs.unity-serial }}
+        UNITY_EMAIL: ${{ inputs.unity-email }}
+        UNITY_PASSWORD: ${{ inputs.unity-password }}
+      run: bash "${{ github.action_path }}/../../scripts/run-unity.sh"
+
+    - name: Upload build
+      if: inputs.upload-artifacts == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.prepare.outputs.artifact-name }}
+        path: ${{ steps.prepare.outputs.build-dir }}
+        if-no-files-found: error

@@ -1,0 +1,20 @@
+{
+  "name": "com.tea-spoons.ci-kit",
+  "version": "0.1.0",
+  "displayName": "TeaSpoons CI Kit",
+  "description": "Headless player build entry point for CI. Pair it with the GitHub Actions in tea-spoons/unity-ci-kit to test, build and publish Unity projects.",
+  "unity": "2021.3",
+  "documentationUrl": "https://github.com/tea-spoons/unity-ci-kit#readme",
+  "changelogUrl": "https://github.com/tea-spoons/unity-ci-kit/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/tea-spoons/unity-ci-kit/blob/main/LICENSE",
+  "keywords": [
+    "ci",
+    "build",
+    "github-actions",
+    "automation"
+  ],
+  "author": {
+    "name": "tea-spoons",
+    "url": "https://github.com/tea-spoons"
+  }
+}

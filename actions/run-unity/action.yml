@@ -1,0 +1,67 @@
+name: Run Unity
+description: Run one or more Unity command lines in a unityci/editor container, with optional license activation.
+
+inputs:
+  unity-version:
+    description: Editor version, e.g. 6000.0.84f1. Ignored when `unity-image` is set.
+    required: false
+  unity-image:
+    description: Full container image reference. Overrides unity-version, component and image-version.
+    required: false
+  component:
+    description: Image component (base, android, ios, webgl, windows-mono, mac-mono, linux-il2cpp).
+    required: false
+    default: base
+  image-version:
+    description: unityci/editor image revision suffix.
+    required: false
+    default: "3"
+  project-path:
+    description: Unity project directory, relative to the workspace.
+    required: false
+    default: "."
+  args:
+    description: >-
+      Unity arguments. One line per Unity invocation; each line runs in order.
+      Do not include -projectPath or -logFile, they are added for you.
+    required: true
+  continue-on-error:
+    description: Run every line even if one fails, and fail at the end with the worst exit code.
+    required: false
+    default: "false"
+  license-mode:
+    description: "How to license the editor: `ulf` (Personal), `serial` (Plus/Pro) or `none`."
+    required: false
+    default: none
+  unity-license:
+    description: Contents of the Unity_lic.ulf file (license-mode=ulf).
+    required: false
+  unity-serial:
+    description: Unity serial key (license-mode=serial).
+    required: false
+  unity-email:
+    description: Unity account email (license-mode=serial).
+    required: false
+  unity-password:
+    description: Unity account password (license-mode=serial).
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Run Unity in container
+      shell: bash
+      env:
+        UNITY_VERSION: ${{ inputs.unity-version }}
+        UNITY_IMAGE: ${{ inputs.unity-image }}
+        UNITY_COMPONENT: ${{ inputs.component }}
+        UNITY_IMAGE_VERSION: ${{ inputs.image-version }}
+        PROJECT_PATH: ${{ inputs.project-path }}
+        UNITY_COMMANDS: ${{ inputs.args }}
+        CONTINUE_ON_ERROR: ${{ inputs.continue-on-error == 'true' && '1' || '0' }}
+        LICENSE_MODE: ${{ inputs.license-mode }}
+        UNITY_LICENSE: ${{ inputs.unity-license }}
+        UNITY_SERIAL: ${{ inputs.unity-serial }}
+        UNITY_EMAIL: ${{ inputs.unity-email }}
+        UNITY_PASSWORD: ${{ inputs.unity-password }}
+      run: bash "${{ github.action_path }}/../../scripts/run-unity.sh"

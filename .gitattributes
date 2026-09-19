@@ -1,0 +1,10 @@
+# LF everywhere: scripts run in Linux containers, and Unity .meta/.asmdef files diff cleanly.
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.unitypackage binary

@@ -1,0 +1,44 @@
+name: Release Unity package (reusable)
+
+# Call from your own repo:
+#   jobs:
+#     release:
+#       uses: tea-spoons/unity-ci-kit/.github/workflows/release-package.yml@v0
+#       with:
+#         package-path: Packages/com.example.mypackage
+#       permissions:
+#         contents: write
+
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: Folder containing package.json.
+        type: string
+        required: true
+      tag-format:
+        description: Tag template; {name} and {version} are replaced.
+        type: string
+        default: "v{version}"
+      dry-run:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: tea-spoons/unity-ci-kit/actions/publish-package@v0
+        with:
+          package-path: ${{ inputs.package-path }}
+          tag-format: ${{ inputs.tag-format }}
+          dry-run: ${{ inputs.dry-run }}

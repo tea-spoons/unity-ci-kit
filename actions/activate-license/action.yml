@@ -1,0 +1,40 @@
+name: Activate Unity license
+description: >-
+  Activate a Unity license on a runner that has Unity installed (self-hosted runner or a setup step of your own).
+  The container-based actions handle licensing themselves; use this one when you run Unity directly on the host.
+  Pair it with `return-license` in an `if: always()` step.
+
+inputs:
+  license-mode:
+    description: "`ulf` (Personal: write the license file) or `serial` (Plus/Pro: activate with a serial)."
+    required: true
+  unity-path:
+    description: Path or command of the Unity editor executable on the runner.
+    required: false
+    default: unity-editor
+  unity-license:
+    description: Contents of the Unity_lic.ulf file (license-mode=ulf).
+    required: false
+  unity-serial:
+    description: Unity serial key (license-mode=serial).
+    required: false
+  unity-email:
+    description: Unity account email (license-mode=serial).
+    required: false
+  unity-password:
+    description: Unity account password (license-mode=serial).
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Activate license
+      shell: bash
+      env:
+        LICENSE_MODE: ${{ inputs.license-mode }}
+        UNITY_PATH: ${{ inputs.unity-path }}
+        UNITY_LICENSE: ${{ inputs.unity-license }}
+        UNITY_SERIAL: ${{ inputs.unity-serial }}
+        UNITY_EMAIL: ${{ inputs.unity-email }}
+        UNITY_PASSWORD: ${{ inputs.unity-password }}
+      run: bash "${{ github.action_path }}/../../scripts/license.sh" activate

@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "com.tea-spoons.ci-kit": "file:../../../Packages/com.tea-spoons.ci-kit",
+    "com.unity.test-framework": "1.4.6"
+  },
+  "testables": [
+    "com.tea-spoons.ci-kit"
+  ]
+}

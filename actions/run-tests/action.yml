@@ -1,0 +1,147 @@
+name: Run Unity tests
+description: Run EditMode and/or PlayMode tests in a container and publish NUnit results and a job summary.
+
+inputs:
+  unity-version:
+    description: Editor version, e.g. 6000.0.84f1.
+    required: true
+  project-path:
+    description: Unity project directory, relative to the workspace.
+    required: false
+    default: "."
+  test-mode:
+    description: "`editmode`, `playmode` or `all`."
+    required: false
+    default: editmode
+  results-path:
+    description: Directory, relative to the workspace root, that receives the NUnit XML results.
+    required: false
+    default: test-results
+  assembly-names:
+    description: Optional semicolon-separated assembly filter passed to -assemblyNames.
+    required: false
+  test-categories:
+    description: Optional semicolon-separated category filter passed to -testCategory.
+    required: false
+  extra-args:
+    description: Extra Unity arguments appended to every test run (single line).
+    required: false
+  component:
+    description: Image component.
+    required: false
+    default: base
+  image-version:
+    description: unityci/editor image revision suffix.
+    required: false
+    default: "3"
+  license-mode:
+    description: "`ulf`, `serial` or `none`."
+    required: false
+    default: none
+  unity-license:
+    description: Contents of the Unity_lic.ulf file (license-mode=ulf).
+    required: false
+  unity-serial:
+    description: Unity serial key (license-mode=serial).
+    required: false
+  unity-email:
+    description: Unity account email (license-mode=serial).
+    required: false
+  unity-password:
+    description: Unity account password (license-mode=serial).
+    required: false
+  upload-artifacts:
+    description: Upload the results directory as a workflow artifact.
+    required: false
+    default: "true"
+  artifact-name:
+    description: Name of the uploaded artifact.
+    required: false
+    default: unity-test-results
+
+outputs:
+  results-dir:
+    description: Absolute path of the results directory on the runner.
+    value: ${{ steps.prepare.outputs.results-dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare test runs
+      id: prepare
+      shell: bash
+      env:
+        TEST_MODE: ${{ inputs.test-mode }}
+        RESULTS_PATH: ${{ inputs.results-path }}
+        ASSEMBLY_NAMES: ${{ inputs.assembly-names }}
+        TEST_CATEGORIES: ${{ inputs.test-categories }}
+        EXTRA_ARGS: ${{ inputs.extra-args }}
+      run: |
+        set -euo pipefail
+        case "$TEST_MODE" in
+          editmode|playmode|all) ;;
+          *) echo "::error::test-mode must be editmode, playmode or all (got '$TEST_MODE')"; exit 64 ;;
+        esac
+
+        results_dir="${GITHUB_WORKSPACE}/${RESULTS_PATH}"
+        mkdir -p "$results_dir"
+        echo "results-dir=${results_dir}" >> "$GITHUB_OUTPUT"
+
+        # Unity runs with the workspace as its working directory, so results use the container path.
+        container_results="/github/workspace/${RESULTS_PATH}"
+
+        build_row() {
+          local platform="$1" file="$2" row
+          row="-runTests -testPlatform ${platform} -testResults ${container_results}/${file}"
+          if [[ -n "$ASSEMBLY_NAMES" ]];  then row+=" -assemblyNames \"${ASSEMBLY_NAMES}\"";  fi
+          if [[ -n "$TEST_CATEGORIES" ]]; then row+=" -testCategory \"${TEST_CATEGORIES}\""; fi
+          if [[ -n "$EXTRA_ARGS" ]];      then row+=" ${EXTRA_ARGS}"; fi
+          printf '%s\n' "$row"
+        }
+
+        {
+          echo "commands<<KIT_EOF"
+          if [[ "$TEST_MODE" == "editmode" || "$TEST_MODE" == "all" ]]; then build_row EditMode editmode-results.xml; fi
+          if [[ "$TEST_MODE" == "playmode" || "$TEST_MODE" == "all" ]]; then build_row PlayMode playmode-results.xml; fi
+          echo "KIT_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Run tests
+      id: unity
+      continue-on-error: true
+      shell: bash
+      env:
+        UNITY_VERSION: ${{ inputs.unity-version }}
+        UNITY_COMPONENT: ${{ inputs.component }}
+        UNITY_IMAGE_VERSION: ${{ inputs.image-version }}
+        PROJECT_PATH: ${{ inputs.project-path }}
+        UNITY_COMMANDS: ${{ steps.prepare.outputs.commands }}
+        CONTINUE_ON_ERROR: "1"
+        LICENSE_MODE: ${{ inputs.license-mode }}
+        UNITY_LICENSE: ${{ inputs.unity-license }}
+        UNITY_SERIAL: ${{ inputs.unity-serial }}
+        UNITY_EMAIL: ${{ inputs.unity-email }}
+        UNITY_PASSWORD: ${{ inputs.unity-password }}
+      run: bash "${{ github.action_path }}/../../scripts/run-unity.sh"
+
+    - name: Summarize results
+      if: always()
+      shell: bash
+      env:
+        RESULTS_DIR: ${{ steps.prepare.outputs.results-dir }}
+      run: bash "${{ github.action_path }}/../../scripts/summarize-tests.sh" "$RESULTS_DIR"
+
+    - name: Upload results
+      if: always() && inputs.upload-artifacts == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ steps.prepare.outputs.results-dir }}
+        if-no-files-found: warn
+
+    - name: Fail if tests failed
+      if: steps.unity.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::error::Unity test run failed. See the job summary and the uploaded results."
+        exit 1
