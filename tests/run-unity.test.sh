@@ -61,6 +61,18 @@ check "ulf mode writes the license file" 0 "LICENSE: <license-body/>" "$rc" "$ou
 run LICENSE_MODE=ulf UNITY_COMMANDS='-x'
 check "ulf mode without a license fails" 65 "UNITY_LICENSE is empty" "$rc" "$out"
 
+run LICENSE_MODE=personal UNITY_EMAIL=me@example.com UNITY_COMMANDS='-x'
+check "personal mode without a password fails" 65 "UNITY_PASSWORD is empty" "$rc" "$out"
+
+run LICENSE_MODE=personal UNITY_EMAIL=me@example.com UNITY_PASSWORD=pw UNITY_COMMANDS='-x'
+check "personal mode logs in with the account, no serial" 0 "[-username] [me@example.com] [-password] [pw]" "$rc" "$out"
+if [[ "$out" != *"[-serial]"* ]]; then
+  echo "ok:   personal activation passes no -serial"
+else
+  echo "FAIL: personal activation passed -serial"; failures=$((failures + 1))
+fi
+check "personal mode returns the seat afterwards" 0 "[-returnlicense]" "$rc" "$out"
+
 run LICENSE_MODE=serial UNITY_SERIAL=s UNITY_EMAIL=e UNITY_COMMANDS='-x'
 check "serial mode without a password fails" 65 "UNITY_PASSWORD is empty" "$rc" "$out"
 

@@ -12,8 +12,9 @@
 #   PROJECT_PATH       Unity project, relative to the workspace      (default: .)
 #   UNITY_COMMANDS     One Unity argument line per row. Each row is a separate
 #                      Unity invocation, run in order.
-#   LICENSE_MODE       ulf | serial | none                           (default: none)
-#   UNITY_LICENSE      Contents of the .ulf file          (LICENSE_MODE=ulf)
+#   LICENSE_MODE       personal | ulf | serial | none                (default: none)
+#   UNITY_EMAIL, UNITY_PASSWORD                             (LICENSE_MODE=personal)
+#   UNITY_LICENSE      Contents of the .ulf file          (LICENSE_MODE=ulf, older editors)
 #   UNITY_SERIAL, UNITY_EMAIL, UNITY_PASSWORD               (LICENSE_MODE=serial)
 #   UNITY_BIN          Editor command inside the image        (default: unity-editor)
 #   CONTINUE_ON_ERROR  1 = run every row and report the worst exit code

@@ -8,12 +8,12 @@ set -uo pipefail
 unity_bin="${UNITY_BIN:-unity-editor}"   # wrapper shipped in unityci/editor images (adds xvfb + -batchmode)
 project_path="${PROJECT_PATH:-.}"
 license_mode="${LICENSE_MODE:-none}"
-serial_active=0
+account_license_active=0   # set once a personal/serial seat has been taken and must be returned
 
 # shellcheck disable=SC2317,SC2329  # invoked through the EXIT trap below
 cleanup() {
   local code=$?
-  if [[ "$serial_active" == "1" ]]; then
+  if [[ "$account_license_active" == "1" ]]; then
     echo "::group::Returning Unity license"
     "$unity_bin" -quit -nographics -logFile /dev/stdout -returnlicense \
       -username "${UNITY_EMAIL:-}" -password "${UNITY_PASSWORD:-}" || echo "::warning::Could not return the Unity license."
@@ -29,6 +29,27 @@ trap cleanup EXIT
 
 case "$license_mode" in
   none)
+    ;;
+  personal)
+    # Current editors treat a Personal license as an entitlement on the Unity account,
+    # so activation is a plain account login (no serial).
+    for var in UNITY_EMAIL UNITY_PASSWORD; do
+      if [[ -z "${!var:-}" ]]; then
+        echo "::error::LICENSE_MODE=personal but ${var} is empty." >&2
+        exit 65
+      fi
+    done
+    echo "::group::Activating Unity Personal license"
+    "$unity_bin" -quit -nographics -logFile /dev/stdout \
+      -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"
+    activation_code=$?
+    echo "::endgroup::"
+    if [[ $activation_code -ne 0 ]]; then
+      echo "::error::Unity Personal license activation failed (exit ${activation_code})." >&2
+      exit "$activation_code"
+    fi
+    # Activation can exit 0 without granting a seat; the first real run then reports exit 198.
+    account_license_active=1
     ;;
   ulf)
     if [[ -z "${UNITY_LICENSE:-}" ]]; then
@@ -55,10 +76,10 @@ case "$license_mode" in
       echo "::error::Unity license activation failed (exit ${activation_code})." >&2
       exit "$activation_code"
     fi
-    serial_active=1
+    account_license_active=1
     ;;
   *)
-    echo "::error::Unknown LICENSE_MODE '${license_mode}' (use ulf, serial or none)." >&2
+    echo "::error::Unknown LICENSE_MODE '${license_mode}' (use personal, ulf, serial or none)." >&2
     exit 64
     ;;
 esac
@@ -78,6 +99,9 @@ while IFS= read -r row; do
 
   if [[ $code -ne 0 ]]; then
     echo "Unity exited with code ${code}"
+    if [[ $code -eq 198 ]]; then
+      echo "::error::Unity found no valid license (exit 198). Check license-mode and the secrets; see docs/licensing.md."
+    fi
     (( code > worst )) && worst=$code
     [[ "${CONTINUE_ON_ERROR:-0}" == "1" ]] || exit "$code"
   fi

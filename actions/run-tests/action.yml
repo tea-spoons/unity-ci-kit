@@ -35,20 +35,20 @@ inputs:
     required: false
     default: "3"
   license-mode:
-    description: "`ulf`, `serial` or `none`."
+    description: "`personal`, `serial`, `ulf` (older editors) or `none`."
     required: false
     default: none
   unity-license:
-    description: Contents of the Unity_lic.ulf file (license-mode=ulf).
+    description: Contents of the Unity_lic.ulf file (license-mode=ulf, older editors only).
     required: false
   unity-serial:
     description: Unity serial key (license-mode=serial).
     required: false
   unity-email:
-    description: Unity account email (license-mode=serial).
+    description: Unity account email (license-mode=personal or serial).
     required: false
   unity-password:
-    description: Unity account password (license-mode=serial).
+    description: Unity account password (license-mode=personal or serial).
     required: false
   upload-artifacts:
     description: Upload the results directory as a workflow artifact.

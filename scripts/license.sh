@@ -3,11 +3,11 @@
 #
 # Usage: license.sh <activate|return>
 #
-#   LICENSE_MODE     ulf | serial
+#   LICENSE_MODE     personal | ulf | serial
 #   UNITY_PATH       Editor executable (default: unity-editor)
 #   UNITY_LICENSE    .ulf contents            (activate, ulf)
 #   UNITY_SERIAL     serial key               (activate, serial)
-#   UNITY_EMAIL, UNITY_PASSWORD               (serial)
+#   UNITY_EMAIL, UNITY_PASSWORD               (personal, serial)
 set -euo pipefail
 
 action="${1:?usage: license.sh <activate|return>}"
@@ -47,6 +47,11 @@ case "${action}:${mode}" in
     printf '%s' "$UNITY_LICENSE" | maybe_sudo tee "${dir}/Unity_lic.ulf" > /dev/null
     echo "License file written."
     ;;
+  activate:personal)
+    require UNITY_EMAIL UNITY_PASSWORD
+    "$unity" -quit -batchmode -nographics -logFile - \
+      -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"
+    ;;
   activate:serial)
     require UNITY_SERIAL UNITY_EMAIL UNITY_PASSWORD
     "$unity" -quit -batchmode -nographics -logFile - \
@@ -56,7 +61,7 @@ case "${action}:${mode}" in
     maybe_sudo rm -f "$(ulf_dir)/Unity_lic.ulf"
     echo "License file removed."
     ;;
-  return:serial)
+  return:personal|return:serial)
     require UNITY_EMAIL UNITY_PASSWORD
     "$unity" -quit -batchmode -nographics -logFile - \
       -returnlicense -username "$UNITY_EMAIL" -password "$UNITY_PASSWORD"

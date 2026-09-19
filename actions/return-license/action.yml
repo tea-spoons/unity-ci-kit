@@ -1,19 +1,19 @@
 name: Return Unity license
-description: Return a serial license (or remove the .ulf file) activated by `activate-license`. Run it with `if: always()`.
+description: Return the license seat (or remove the .ulf file) activated by `activate-license`. Run it with `if: always()`.
 
 inputs:
   license-mode:
-    description: "`ulf` (remove the license file) or `serial` (return the serial license)."
+    description: "`personal` or `serial` (return the seat) or `ulf` (remove the license file)."
     required: true
   unity-path:
     description: Path or command of the Unity editor executable on the runner.
     required: false
     default: unity-editor
   unity-email:
-    description: Unity account email (license-mode=serial).
+    description: Unity account email (license-mode=personal or serial).
     required: false
   unity-password:
-    description: Unity account password (license-mode=serial).
+    description: Unity account password (license-mode=personal or serial).
     required: false
 
 runs:

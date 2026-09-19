@@ -40,9 +40,9 @@ on:
         type: string
         default: TeaSpoons.CiKit.BuildRunner.Build
       license-mode:
-        description: ulf, serial or none.
+        description: personal, serial, ulf (older editors) or none.
         type: string
-        default: ulf
+        default: personal
       image-version:
         type: string
         default: "3"

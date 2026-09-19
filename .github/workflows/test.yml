@@ -23,9 +23,9 @@ on:
         type: string
         default: editmode
       license-mode:
-        description: ulf, serial or none.
+        description: personal, serial, ulf (older editors) or none.
         type: string
-        default: ulf
+        default: personal
       component:
         type: string
         default: base

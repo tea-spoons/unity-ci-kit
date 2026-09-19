@@ -11,8 +11,8 @@ on:
         description: Editor version
         default: 6000.0.84f1
       license-mode:
-        description: ulf or serial
-        default: ulf
+        description: personal, serial or ulf
+        default: personal
 
 permissions:
   contents: read
