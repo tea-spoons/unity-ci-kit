@@ -1,6 +1,6 @@
 {
   "name": "com.tea-spoons.ci-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "TeaSpoons CI Kit",
   "description": "Headless player build entry point for CI. Pair it with the GitHub Actions in tea-spoons/unity-ci-kit to test, build and publish Unity projects.",
   "unity": "2021.3",

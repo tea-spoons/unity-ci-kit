@@ -31,7 +31,7 @@ expect "missing .meta is reported" 1 "Missing .meta file for Editor/BuildRunner.
 broken; touch "$work/pkg/ghost.txt.meta"
 expect "orphaned .meta is reported" 1 "Orphaned meta file ghost.txt.meta" "$work/pkg"
 
-broken; sed -i 's/"version": "0.1.0"/"version": "one"/' "$work/pkg/package.json"
+broken; sed -i 's/"version": "[^"]*"/"version": "one"/' "$work/pkg/package.json"
 expect "non-semantic version is reported" 1 "is not semantic" "$work/pkg"
 
 broken; sed -i 's/"name": "com.tea-spoons.ci-kit"/"name": "NotValid"/' "$work/pkg/package.json"
