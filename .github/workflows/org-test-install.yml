@@ -10,7 +10,7 @@ name: Org-wide package isolation check
 
 on:
   schedule:
-    - cron: "0 6 * * 1" # every Monday 06:00 UTC
+    - cron: "57 15 * * 1" # weekly, every Monday, anchored to when this schedule was pinned (2026-09-21 15:57 UTC)
   workflow_dispatch:
     inputs:
       unity-version:
