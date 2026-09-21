@@ -55,6 +55,5 @@ jobs:
         with:
           package-path: ${{ matrix.package.path }}
           unity-version: ${{ inputs.unity-version || '6000.0.84f1' }}
-          license-mode: personal
-          unity-email: ${{ secrets.UNITY_EMAIL }}
-          unity-password: ${{ secrets.UNITY_PASSWORD }}
+          license-mode: ulf
+          unity-license: ${{ secrets.UNITY_LICENSE }}
