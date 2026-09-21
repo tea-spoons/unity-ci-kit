@@ -43,6 +43,7 @@ jobs:
     if: needs.discover.outputs.packages != '[]'
     strategy:
       fail-fast: false
+      max-parallel: 4 # Unity Personal license activation gets rejected under too much concurrency from one account
       matrix:
         package: ${{ fromJson(needs.discover.outputs.packages) }}
     runs-on: ubuntu-latest
