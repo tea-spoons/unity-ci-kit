@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Checks scripts/prepare-test-install.sh. The dependency-resolving checks need network access
+# to github.com/tea-spoons and are skipped (not failed) when that isn't reachable.
+# Usage: bash tests/prepare-test-install.test.sh
+set -uo pipefail
+
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+prepare="$repo/scripts/prepare-test-install.sh"
+good="$repo/Packages/com.tea-spoons.ci-kit" # no declared dependencies - exercises the local-only path
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+
+failures=0
+ok()   { echo "ok:   $1"; }
+fail() { echo "FAIL: $1"; shift; [[ $# -gt 0 ]] && printf '%s\n' "$@" | sed 's/^/    /'; failures=$((failures + 1)); }
+
+# A package with no dependencies embeds only itself and the test framework.
+out="$(bash "$prepare" "$good" "$work/proj1" 2>&1)"; rc=$?
+if [[ $rc -eq 0 ]] \
+  && [[ -d "$work/proj1/Assets" ]] \
+  && [[ -f "$work/proj1/Packages/com.tea-spoons.ci-kit/package.json" ]] \
+  && jq -e '.dependencies["com.tea-spoons.ci-kit"] and .dependencies["com.unity.test-framework"]' "$work/proj1/Packages/manifest.json" > /dev/null; then
+  ok "package with no dependencies embeds itself + test-framework only"
+else
+  fail "package with no dependencies embeds itself + test-framework only" "$out"
+fi
+
+# Missing package.json is reported and nothing is left half-built.
+out="$(bash "$prepare" "$work/does-not-exist" "$work/proj2" 2>&1)"; rc=$?
+if [[ $rc -ne 0 && "$out" == *"not found"* ]]; then
+  ok "missing package.json is reported"
+else
+  fail "missing package.json is reported" "$out"
+fi
+
+if git ls-remote --exit-code https://github.com/tea-spoons/large-numbers.git > /dev/null 2>&1; then
+  mkdir -p "$work/net-pkg"
+  cat > "$work/net-pkg/package.json" <<'EOF'
+{
+  "name": "com.tea-spoons.__test-install-fixture",
+  "version": "0.0.1",
+  "displayName": "Test Install Fixture",
+  "description": "Synthetic package used only by prepare-test-install.test.sh.",
+  "dependencies": { "com.tea-spoons.large-numbers": "0.7.2" }
+}
+EOF
+  out="$(bash "$prepare" "$work/net-pkg" "$work/proj3" 2>&1)"; rc=$?
+  if [[ $rc -eq 0 ]] \
+    && [[ -f "$work/proj3/Packages/com.tea-spoons.large-numbers/package.json" ]] \
+    && jq -e '.dependencies["com.tea-spoons.large-numbers"] == "0.7.2"' "$work/proj3/Packages/manifest.json" > /dev/null; then
+    ok "a declared tea-spoons dependency at a real tag is embedded"
+  else
+    fail "a declared tea-spoons dependency at a real tag is embedded" "$out"
+  fi
+
+  mkdir -p "$work/stale-pkg"
+  cat > "$work/stale-pkg/package.json" <<'EOF'
+{
+  "name": "com.tea-spoons.__test-install-fixture-stale",
+  "version": "0.0.1",
+  "displayName": "Test Install Fixture (stale pin)",
+  "description": "Synthetic package used only by prepare-test-install.test.sh.",
+  "dependencies": { "com.tea-spoons.large-numbers": "0.0.1-does-not-exist" }
+}
+EOF
+  out="$(bash "$prepare" "$work/stale-pkg" "$work/proj4" 2>&1)"; rc=$?
+  if [[ $rc -eq 0 ]] \
+    && [[ "$out" == *"::warning::"*"has no tag"* ]] \
+    && [[ -f "$work/proj4/Packages/com.tea-spoons.large-numbers/package.json" ]]; then
+    ok "an unpublished pinned version falls back to the sibling's latest tag, with a warning"
+  else
+    fail "an unpublished pinned version falls back to the sibling's latest tag, with a warning" "$out"
+  fi
+else
+  echo "skip: github.com/tea-spoons is not reachable, skipping dependency-resolution checks"
+fi
+
+if [[ $failures -gt 0 ]]; then echo "$failures check(s) failed."; exit 1; fi
+echo "All prepare-test-install checks passed."
