@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0]
+
+- New `actions/test-install` (+ reusable `test-install.yml`): compiles a package alone, with only
+  the dependencies it declares in its own `package.json`, to catch an undeclared dependency on a
+  sibling package. Falls back (with a warning) to a sibling's latest tag when a declared version
+  was never published.
+- New `org-test-install.yml`: runs `test-install` weekly across every UPM package in the org,
+  discovered automatically (`scripts/discover-packages.sh`) - no per-repo opt-in needed.
+
 ## [0.2.0]
 
 **Behavior change:** the reusable workflows (`test.yml`, `build.yml`) and the sample now default to `license-mode: personal`

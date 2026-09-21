@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.0]
+
+- No code changes. Version aligned with the kit release that adds the `test-install` check.
+
 ## [0.2.0]
 
 - No code changes. Version aligned with the kit release that adds `license-mode: personal` to the actions.
