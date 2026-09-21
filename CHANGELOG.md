@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.2]
+
+- Fix `prepare-test-install.sh`: `TAG_FORMAT` and `REPO_OVERRIDES` (which `actions/test-install`
+  always exports, even at their default values) hit a bash pitfall where `${VAR:-word}` silently
+  corrupts `word` when it contains a literal `}` and `VAR` is set - every sibling-dependency tag
+  lookup was resolving to e.g. `v0.7.2}` instead of `v0.7.2`, always missing on the first try and
+  falling back to the sibling's latest tag (with a spurious "pin is stale" warning) even when the
+  declared pin was correct. Checks emptiness explicitly now instead of relying on the pitfall-prone
+  default syntax.
+- Fix `actions/test-install`: the uploaded-artifact name included `package-path` verbatim, which
+  broke for a nested package (e.g. `Packages/com.tea-spoons.ci-kit`) since artifact names can't
+  contain `/`. Sanitized now.
+
 ## [0.3.1]
 
 - Fix `prepare-test-install.sh`: a package with `package-path: .` (the common case) failed

@@ -19,8 +19,13 @@ project="${2:?usage: prepare-test-install.sh <package-dir> <project-dir>}"
 pkg="${pkg%/}"; pkg="${pkg:-.}"
 
 org="${ORG:-tea-spoons}"
-tag_format="${TAG_FORMAT:-v{version}}"
-overrides="${REPO_OVERRIDES:-{\"com.tea-spoons.ci-kit\":\"unity-ci-kit\"}}"
+# NOT `"${TAG_FORMAT:-v{version}}"`: bash's `${VAR:-word}` mis-parses a `word` containing a
+# literal, unescaped `}` - it closes the expansion one `}` early and appends the rest as a
+# literal suffix, silently corrupting the result even when the variable IS set (e.g. yielding
+# "v{version}}" here). Check emptiness explicitly instead.
+tag_format="${TAG_FORMAT:-}"; [[ -n "$tag_format" ]] || tag_format='v{version}'
+overrides="${REPO_OVERRIDES:-}"
+[[ -n "$overrides" ]] || overrides='{"com.tea-spoons.ci-kit":"unity-ci-kit"}'
 tf_version="${TEST_FRAMEWORK_VERSION:-1.4.6}"
 prefix="com.${org}."
 

@@ -67,6 +67,20 @@ EOF
     fail "a declared tea-spoons dependency at a real tag is embedded" "$out"
   fi
 
+  # actions/test-install always exports TAG_FORMAT and REPO_OVERRIDES (even at their default
+  # values) rather than leaving them unset - a prior bug only showed up in that exact case
+  # (bash's `${VAR:-word}` silently corrupts `word` when VAR IS set and `word` has a literal
+  # `}` in it), so exercise the same shape here instead of only the unset-default path above.
+  out="$(TAG_FORMAT='v{version}' REPO_OVERRIDES='{"com.tea-spoons.ci-kit":"unity-ci-kit"}' \
+    bash "$prepare" "$work/net-pkg" "$work/proj3b" 2>&1)"; rc=$?
+  if [[ $rc -eq 0 ]] \
+    && [[ -f "$work/proj3b/Packages/com.tea-spoons.large-numbers/package.json" ]] \
+    && [[ "$out" != *"::warning::"* ]]; then
+    ok "TAG_FORMAT/REPO_OVERRIDES exported at their default values still resolve the exact tag"
+  else
+    fail "TAG_FORMAT/REPO_OVERRIDES exported at their default values still resolve the exact tag" "$out"
+  fi
+
   mkdir -p "$work/stale-pkg"
   cat > "$work/stale-pkg/package.json" <<'EOF'
 {

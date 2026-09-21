@@ -57,7 +57,7 @@ Build several targets:
 (Package Manager > **Add package from git URL**):
 
 ```
-https://github.com/tea-spoons/unity-ci-kit.git?path=/Packages/com.tea-spoons.ci-kit#v0.3.1
+https://github.com/tea-spoons/unity-ci-kit.git?path=/Packages/com.tea-spoons.ci-kit#v0.3.2
 ```
 
 Prefer your own build script? Pass `execute-method: MyCompany.Build.Run` and skip the package.

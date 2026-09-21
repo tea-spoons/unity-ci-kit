@@ -67,6 +67,15 @@ runs:
         bash "${{ github.action_path }}/../../scripts/prepare-test-install.sh" \
           "${{ inputs.package-path }}" "${{ inputs.project-path }}"
 
+    - name: Sanitize artifact name
+      id: artifact
+      shell: bash
+      run: |
+        # Artifact names can't contain "/" (a nested package-path like Packages/com.foo.bar has
+        # one), or the other characters GitHub rejects - fold anything not alnum/-/_/. to "-".
+        name="test-install-results-$(printf '%s' "${{ inputs.package-path }}" | tr -c 'A-Za-z0-9._-' '-')"
+        echo "name=${name}" >> "$GITHUB_OUTPUT"
+
     - name: Compile in isolation
       uses: tea-spoons/unity-ci-kit/actions/run-tests@v0
       with:
@@ -74,7 +83,7 @@ runs:
         project-path: ${{ inputs.project-path }}
         test-mode: editmode
         results-path: test-install-results
-        artifact-name: test-install-results-${{ inputs.package-path }}
+        artifact-name: ${{ steps.artifact.outputs.name }}
         component: ${{ inputs.component }}
         image-version: ${{ inputs.image-version }}
         license-mode: ${{ inputs.license-mode }}

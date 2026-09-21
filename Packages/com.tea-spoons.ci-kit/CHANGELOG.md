@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.3.2]
+
+- No code changes. Version aligned with the kit release that fixes `test-install` further.
+
 ## [0.3.1]
 
 - No code changes. Version aligned with the kit release that fixes `test-install`.
