@@ -39,16 +39,25 @@ repo_for() {
 }
 
 echo "Preparing isolated install of ${name}@${version} in ${project}"
+
+# Snapshot the package into an external staging dir BEFORE touching $project. $project is
+# commonly created as a subdirectory of the checked-out repo (e.g. package-path "." with
+# project-path ".test-install-project"), so copying "$pkg" straight into "$project/Packages/..."
+# after $project exists can mean copying a directory into its own descendant.
+stage="$(mktemp -d)"
+trap 'rm -rf "$stage"' EXIT
+cp -a "${pkg}/." "$stage/"
+rm -rf "${stage}/.git"
+
 rm -rf "$project"
 mkdir -p "$project/Packages" "$project/ProjectSettings" "$project/Assets"
 cp "${script_dir}/../examples/sample-project/ProjectSettings/ProjectVersion.txt" "$project/ProjectSettings/ProjectVersion.txt"
 
 # Embed the package under test. Its own folder name doesn't matter to Unity, only that
-# package.json sits at the top of it; strip .git so the throwaway project has no nested repo.
+# package.json sits at the top of it.
 dest="$project/Packages/${name}"
 mkdir -p "$dest"
-cp -a "${pkg}/." "$dest/"
-rm -rf "${dest}/.git"
+cp -a "${stage}/." "$dest/"
 
 deps="$(jq -c '.dependencies // {}' "$manifest")"
 manifest_deps="$(jq -n --arg n "$name" --arg v "$version" --arg tf "$tf_version" \

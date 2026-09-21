@@ -25,6 +25,20 @@ else
   fail "package with no dependencies embeds itself + test-framework only" "$out"
 fi
 
+# package-path "." with the project directory created *inside* it (exactly what CI does when
+# a package sits at its repo's root) must not try to copy the package into its own descendant.
+mkdir -p "$work/root-pkg"
+cp -a "$good/." "$work/root-pkg/"
+( cd "$work/root-pkg" && out="$(bash "$prepare" "." ".test-install-project" 2>&1)"; rc=$?
+  if [[ $rc -eq 0 ]] && [[ -f ".test-install-project/Packages/com.tea-spoons.ci-kit/package.json" ]]; then
+    echo "ok:   package-path . with a project dir nested inside it doesn't self-copy"
+  else
+    echo "FAIL: package-path . with a project dir nested inside it doesn't self-copy"
+    printf '%s\n' "$out" | sed 's/^/    /'
+    exit 1
+  fi
+) || failures=$((failures + 1))
+
 # Missing package.json is reported and nothing is left half-built.
 out="$(bash "$prepare" "$work/does-not-exist" "$work/proj2" 2>&1)"; rc=$?
 if [[ $rc -ne 0 && "$out" == *"not found"* ]]; then

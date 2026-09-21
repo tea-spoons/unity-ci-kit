@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.1]
+
+- Fix `prepare-test-install.sh`: a package with `package-path: .` (the common case) failed
+  immediately with `cp: cannot copy a directory ... into itself`, because the throwaway project
+  was built as a subdirectory of the package being copied. The package is now staged externally
+  first.
+- `org-test-install.yml` now uses `license-mode: personal` - `ulf` doesn't work on Unity 6 (see
+  the 0.2.0 entry below), so the org-wide run needs the same `UNITY_EMAIL`/`UNITY_PASSWORD`
+  secrets as everything else here.
+
 ## [0.3.0]
 
 - New `actions/test-install` (+ reusable `test-install.yml`): compiles a package alone, with only

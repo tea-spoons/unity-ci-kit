@@ -11,7 +11,7 @@ Package Manager > **Add package from git URL**:
 https://github.com/tea-spoons/unity-ci-kit.git?path=/Packages/com.tea-spoons.ci-kit
 ```
 
-Pin a release by appending a tag, for example `#v0.3.0`.
+Pin a release by appending a tag, for example `#v0.3.1`.
 
 ## Use
 
