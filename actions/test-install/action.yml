@@ -1,0 +1,84 @@
+name: Test-install a package in isolation
+description: >-
+  Builds a throwaway project containing only this package plus the dependencies declared in
+  its own package.json, then compiles it. Catches a package that only works because a sibling
+  happens to be installed alongside it, without that dependency being declared.
+
+inputs:
+  package-path:
+    description: Path of the package folder (the one containing package.json), relative to the workspace.
+    required: true
+  unity-version:
+    description: Editor version, e.g. 6000.0.84f1.
+    required: true
+  org:
+    description: GitHub org/user the sibling packages live in.
+    required: false
+    default: tea-spoons
+  tag-format:
+    description: Tag template a sibling's release used, {name} and {version} replaced.
+    required: false
+    default: "v{version}"
+  repo-overrides:
+    description: >-
+      JSON object mapping package name -> repo name, for packages whose repo isn't named
+      after the package (e.g. the ci-kit package lives in the unity-ci-kit repo).
+    required: false
+    default: '{"com.tea-spoons.ci-kit":"unity-ci-kit"}'
+  project-path:
+    description: Where to build the throwaway project, relative to the workspace.
+    required: false
+    default: .test-install-project
+  component:
+    description: Image component.
+    required: false
+    default: base
+  image-version:
+    description: unityci/editor image revision suffix.
+    required: false
+    default: "3"
+  license-mode:
+    description: "`personal`, `serial`, `ulf` (older editors) or `none`."
+    required: false
+    default: none
+  unity-license:
+    description: Contents of the Unity_lic.ulf file (license-mode=ulf, older editors only).
+    required: false
+  unity-serial:
+    description: Unity serial key (license-mode=serial).
+    required: false
+  unity-email:
+    description: Unity account email (license-mode=personal or serial).
+    required: false
+  unity-password:
+    description: Unity account password (license-mode=personal or serial).
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Build isolated project
+      shell: bash
+      env:
+        ORG: ${{ inputs.org }}
+        TAG_FORMAT: ${{ inputs.tag-format }}
+        REPO_OVERRIDES: ${{ inputs.repo-overrides }}
+      run: |
+        bash "${{ github.action_path }}/../../scripts/prepare-test-install.sh" \
+          "${{ inputs.package-path }}" "${{ inputs.project-path }}"
+
+    - name: Compile in isolation
+      uses: tea-spoons/unity-ci-kit/actions/run-tests@v0
+      with:
+        unity-version: ${{ inputs.unity-version }}
+        project-path: ${{ inputs.project-path }}
+        test-mode: editmode
+        results-path: test-install-results
+        artifact-name: test-install-results-${{ inputs.package-path }}
+        component: ${{ inputs.component }}
+        image-version: ${{ inputs.image-version }}
+        license-mode: ${{ inputs.license-mode }}
+        unity-license: ${{ inputs.unity-license }}
+        unity-serial: ${{ inputs.unity-serial }}
+        unity-email: ${{ inputs.unity-email }}
+        unity-password: ${{ inputs.unity-password }}

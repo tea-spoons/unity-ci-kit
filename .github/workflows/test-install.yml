@@ -1,0 +1,76 @@
+name: Test-install in isolation (reusable)
+
+# Call from your own repo:
+#   jobs:
+#     test-install:
+#       uses: tea-spoons/unity-ci-kit/.github/workflows/test-install.yml@v0
+#       with:
+#         unity-version: 6000.0.84f1
+#       secrets: inherit
+
+on:
+  workflow_call:
+    inputs:
+      unity-version:
+        description: Editor version, e.g. 6000.0.84f1.
+        type: string
+        required: true
+      package-path:
+        description: Path of the package folder (the one containing package.json), relative to the repo.
+        type: string
+        default: "."
+      org:
+        type: string
+        default: tea-spoons
+      tag-format:
+        type: string
+        default: "v{version}"
+      repo-overrides:
+        type: string
+        default: '{"com.tea-spoons.ci-kit":"unity-ci-kit"}'
+      license-mode:
+        description: personal, serial, ulf (older editors) or none.
+        type: string
+        default: personal
+      component:
+        type: string
+        default: base
+      image-version:
+        type: string
+        default: "3"
+      runs-on:
+        type: string
+        default: ubuntu-latest
+    secrets:
+      UNITY_LICENSE:
+        required: false
+      UNITY_SERIAL:
+        required: false
+      UNITY_EMAIL:
+        required: false
+      UNITY_PASSWORD:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  test-install:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: tea-spoons/unity-ci-kit/actions/test-install@v0
+        with:
+          package-path: ${{ inputs.package-path }}
+          unity-version: ${{ inputs.unity-version }}
+          org: ${{ inputs.org }}
+          tag-format: ${{ inputs.tag-format }}
+          repo-overrides: ${{ inputs.repo-overrides }}
+          component: ${{ inputs.component }}
+          image-version: ${{ inputs.image-version }}
+          license-mode: ${{ inputs.license-mode }}
+          unity-license: ${{ secrets.UNITY_LICENSE }}
+          unity-serial: ${{ secrets.UNITY_SERIAL }}
+          unity-email: ${{ secrets.UNITY_EMAIL }}
+          unity-password: ${{ secrets.UNITY_PASSWORD }}

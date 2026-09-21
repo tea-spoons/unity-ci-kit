@@ -1,0 +1,59 @@
+name: Org-wide package isolation check
+
+# Periodically test-installs every UPM package in the org on its own, with only the
+# dependencies it declares in its own package.json - catching a package that silently
+# relies on a sibling it doesn't actually declare.
+#
+# Runs from this repo (unity-ci-kit) because a workflow's `schedule` trigger only fires from
+# the repo it lives in, and discovering the whole org's packages belongs in one place rather
+# than duplicated into every package repo's own workflow.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # every Monday 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      unity-version:
+        description: Editor version to test with.
+        type: string
+        default: 6000.0.84f1
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.discover.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Discover packages
+        id: discover
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          packages="$(bash scripts/discover-packages.sh tea-spoons)"
+          echo "Found $(jq length <<< "$packages") package(s)."
+          echo "packages=${packages}" >> "$GITHUB_OUTPUT"
+
+  test-install:
+    needs: discover
+    if: needs.discover.outputs.packages != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.discover.outputs.packages) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: tea-spoons/${{ matrix.package.repo }}
+
+      - uses: tea-spoons/unity-ci-kit/actions/test-install@v0
+        with:
+          package-path: ${{ matrix.package.path }}
+          unity-version: ${{ inputs.unity-version || '6000.0.84f1' }}
+          license-mode: ulf
+          unity-license: ${{ secrets.UNITY_LICENSE }}

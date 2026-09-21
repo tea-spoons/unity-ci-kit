@@ -12,11 +12,17 @@ Part of the [tea-spoons](https://github.com/tea-spoons) collection of Unity tool
 | [`actions/run-unity`](actions/run-unity) | Escape hatch: run any Unity command line in a container, with licensing handled |
 | [`actions/activate-license`](actions/activate-license), [`return-license`](actions/return-license) | Licensing for Unity installed on the runner (self-hosted) |
 | [`actions/validate-package`](actions/validate-package) | Checks `package.json`, `.meta` coverage and GUID uniqueness of a UPM package |
+| [`actions/test-install`](actions/test-install) | Compiles a package alone, with only the dependencies it declares in `package.json` - catches an undeclared dependency on a sibling package |
 | [`actions/publish-package`](actions/publish-package) | Tags a package, creates a GitHub release with a tarball, optionally writes an index page |
 | [`Packages/com.tea-spoons.ci-kit`](Packages/com.tea-spoons.ci-kit) | Unity package with the `BuildRunner` that `build-player` calls |
 
 Ready-made reusable workflows wrap these: [`test.yml`](.github/workflows/test.yml),
-[`build.yml`](.github/workflows/build.yml) and [`release-package.yml`](.github/workflows/release-package.yml).
+[`build.yml`](.github/workflows/build.yml), [`test-install.yml`](.github/workflows/test-install.yml)
+and [`release-package.yml`](.github/workflows/release-package.yml).
+
+[`org-test-install.yml`](.github/workflows/org-test-install.yml) runs `test-install` against every
+package in the org on a weekly schedule (also triggerable by hand), so no individual repo needs to
+opt in for the check to run - see [docs/test-install.md](docs/test-install.md).
 
 ## Quick start
 
