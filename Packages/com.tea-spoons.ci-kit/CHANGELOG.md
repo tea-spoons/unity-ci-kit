@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.0]
+
+- No code changes. Version aligned with the kit release that makes `test-install`'s dependency
+  resolution transitive.
+
 ## [0.3.2]
 
 - No code changes. Version aligned with the kit release that fixes `test-install` further.

@@ -68,14 +68,44 @@ deps="$(jq -c '.dependencies // {}' "$manifest")"
 manifest_deps="$(jq -n --arg n "$name" --arg v "$version" --arg tf "$tf_version" \
   '{ ($n): $v, "com.unity.test-framework": $tf }')"
 
-for dep in $(jq -r 'keys[]' <<< "$deps"); do
-  dep_version="$(jq -r --arg k "$dep" '.[$k]' <<< "$deps")"
-  manifest_deps="$(jq --arg k "$dep" --arg v "$dep_version" '. + {($k): $v}' <<< "$manifest_deps")"
+# Unity's package resolver hard-fails the WHOLE project if any embedded package (including a
+# sibling we embedded) declares a dependency that isn't present - so a sibling's own declared
+# dependencies have to be embedded too, transitively, not just the target package's direct ones.
+# (No associative arrays: this needs to run under bash 3.2, which is what macOS still ships.)
+embedded=$'\n'
+queue=()
+
+is_embedded() { [[ "$embedded" == *$'\n'"$1"$'\n'* ]]; }
+mark_embedded() { embedded+="$1"$'\n'; }
+
+enqueue_deps() {
+  local deps_json="$1" dep dep_version
+  for dep in $(jq -r 'keys[]' <<< "$deps_json"); do
+    dep_version="$(jq -r --arg k "$dep" '.[$k]' <<< "$deps_json")"
+    queue+=("${dep}"$'\t'"${dep_version}")
+  done
+}
+
+enqueue_deps "$deps"
+
+while [[ ${#queue[@]} -gt 0 ]]; do
+  entry="${queue[0]}"; queue=("${queue[@]:1}")
+  dep="${entry%%$'\t'*}"; dep_version="${entry#*$'\t'}"
 
   if [[ "$dep" != "$prefix"* ]]; then
-    echo "  ${dep}@${dep_version} -> registry (declared as-is)"
+    # A plain registry package: just declare it, once (first declared version wins if it
+    # appears more than once across the dependency graph).
+    if ! jq -e --arg k "$dep" 'has($k)' <<< "$manifest_deps" > /dev/null; then
+      manifest_deps="$(jq --arg k "$dep" --arg v "$dep_version" '. + {($k): $v}' <<< "$manifest_deps")"
+      echo "  ${dep}@${dep_version} -> registry (declared as-is)"
+    fi
     continue
   fi
+
+  # Already embedded (or being embedded) - skip, both to dedupe and to guard against a cycle.
+  is_embedded "$dep" && continue
+  mark_embedded "$dep"
+  manifest_deps="$(jq --arg k "$dep" --arg v "$dep_version" '. + {($k): $v}' <<< "$manifest_deps")"
 
   repo="$(repo_for "$dep")"
   tag="${tag_format//\{name\}/$dep}"; tag="${tag//\{version\}/$dep_version}"
@@ -90,11 +120,11 @@ for dep in $(jq -r 'keys[]' <<< "$deps"); do
     rm -rf "$sibling_clone"; sibling_clone="$(mktemp -d)"
     latest_tag="$(git ls-remote --tags --refs --sort=-v:refname "$remote" 2>/dev/null | head -n1 | sed 's#.*refs/tags/##')"
     if [[ -n "$latest_tag" ]]; then
-      echo "::warning::${org}/${repo} has no tag '${tag}' for declared dependency ${dep}@${dep_version} of ${name}; using its latest tag '${latest_tag}' instead. The pinned version in package.json is stale."
+      echo "::warning::${org}/${repo} has no tag '${tag}' for declared dependency ${dep}@${dep_version}; using its latest tag '${latest_tag}' instead. The pinned version in package.json is stale."
       git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$latest_tag" "$remote" "$sibling_clone" \
         || { echo "::error::Could not clone ${org}/${repo} at its latest tag '${latest_tag}' either."; exit 1; }
     else
-      echo "::warning::${org}/${repo} has no tags at all; using its default branch for declared dependency ${dep}@${dep_version} of ${name}."
+      echo "::warning::${org}/${repo} has no tags at all; using its default branch for declared dependency ${dep}@${dep_version}."
       git -c advice.detachedHead=false clone --quiet --depth 1 "$remote" "$sibling_clone" \
         || { echo "::error::Could not clone ${org}/${repo} (no tags, default branch clone also failed)."; exit 1; }
     fi
@@ -112,6 +142,8 @@ for dep in $(jq -r 'keys[]' <<< "$deps"); do
   sibling_dest="$project/Packages/${dep}"
   mkdir -p "$sibling_dest"
   cp -a "${sibling_pkg_dir}/." "$sibling_dest/"
+
+  enqueue_deps "$(jq -c '.dependencies // {}' "${sibling_pkg_dir}/package.json")"
   rm -rf "$sibling_clone"
 done
 

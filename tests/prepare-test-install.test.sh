@@ -81,6 +81,29 @@ EOF
     fail "TAG_FORMAT/REPO_OVERRIDES exported at their default values still resolve the exact tag" "$out"
   fi
 
+  # A dependency's own dependencies must be embedded too, transitively - Unity's package
+  # resolver hard-fails the whole project if any embedded package (including a sibling)
+  # declares one that isn't present. addressables-toolbox really does declare package-core.
+  mkdir -p "$work/transitive-pkg"
+  cat > "$work/transitive-pkg/package.json" <<'EOF'
+{
+  "name": "com.tea-spoons.__test-install-fixture-transitive",
+  "version": "0.0.1",
+  "displayName": "Test Install Fixture (transitive)",
+  "description": "Synthetic package used only by prepare-test-install.test.sh.",
+  "dependencies": { "com.tea-spoons.addressables-toolbox": "0.6.0" }
+}
+EOF
+  out="$(bash "$prepare" "$work/transitive-pkg" "$work/proj3c" 2>&1)"; rc=$?
+  if [[ $rc -eq 0 ]] \
+    && [[ -f "$work/proj3c/Packages/com.tea-spoons.addressables-toolbox/package.json" ]] \
+    && [[ -f "$work/proj3c/Packages/com.tea-spoons.package-core/package.json" ]] \
+    && jq -e '.dependencies["com.tea-spoons.package-core"]' "$work/proj3c/Packages/manifest.json" > /dev/null; then
+    ok "a dependency's own tea-spoons dependency is embedded transitively"
+  else
+    fail "a dependency's own tea-spoons dependency is embedded transitively" "$out"
+  fi
+
   mkdir -p "$work/stale-pkg"
   cat > "$work/stale-pkg/package.json" <<'EOF'
 {

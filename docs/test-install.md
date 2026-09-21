@@ -7,16 +7,21 @@ the sibling is just sitting right there. Anyone who installs that package on its
 compile error the playground never showed.
 
 `actions/test-install` catches this: it builds a throwaway project containing only the package
-under test, plus exactly the dependencies listed in its own `package.json` (each fetched from
-its GitHub repo at the tag that version should have been published as), and compiles it.
+under test, plus exactly the dependencies listed in its own `package.json` - and, transitively,
+each of those dependencies' own declared dependencies, and so on - each fetched from its GitHub
+repo at the tag that version should have been published as. Then it compiles the project.
+
+Transitive resolution isn't optional here: Unity's package resolver hard-fails the *whole*
+project if any embedded package (including a sibling brought in for the check) declares a
+dependency that isn't present, so a dependency's own dependencies have to be embedded too for
+the check to run at all.
 
 ## What it does and doesn't catch
 
 - **Catches:** a package using a type/namespace from a `com.tea-spoons.*` package it doesn't
-  declare as a dependency.
-- **Doesn't catch:** a *declared* dependency's own undeclared dependencies - each package is
-  checked with its declared dependency embedded as-is, one level deep, not recursively. That
-  package gets caught by its own `test-install` run instead.
+  declare as a dependency, at any depth.
+- **Doesn't catch:** an *undeclared* dependency's own undeclared dependencies - obviously, since
+  finding it in the first place is what the check above already covers.
 - **Also surfaces, as a warning (not a failure):** a declared dependency version that was never
   published as a tag. The check falls back to that sibling's latest tag so it can still run, but
   the warning means the pin in `package.json` is stale and should be bumped.

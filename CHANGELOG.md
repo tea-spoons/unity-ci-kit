@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0]
+
+- `prepare-test-install.sh` now resolves a package's tea-spoons dependencies **transitively**,
+  not just its direct ones. Unity's package resolver hard-fails the whole project if any embedded
+  package - including a sibling brought in for the check - declares a dependency that isn't
+  present, so a dependency's own dependencies have to be embedded too for the check to run at
+  all. This was found via `org-test-install.yml`'s first real run: `stacking-dialogs` failed
+  instantly because its dependency `addressables-toolbox` itself depends on `package-core`, which
+  wasn't embedded.
+
 ## [0.3.2]
 
 - Fix `prepare-test-install.sh`: `TAG_FORMAT` and `REPO_OVERRIDES` (which `actions/test-install`
